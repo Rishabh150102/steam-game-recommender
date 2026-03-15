@@ -194,6 +194,29 @@ def load_data():
             df[col] = df[col].apply(
                 lambda x: ', '.join(str(i) for i in x) if isinstance(x, (list, __import__("numpy").ndarray)) else x
             )
+
+    # Limit dataset size for memory efficiency on free tier
+    # Keep only columns we actually need
+    keep_cols = [c for c in [
+        'Name', 'Price', 'Positive', 'Negative', 'Genres', 'Tags',
+        'Categories', 'Windows', 'Mac', 'Linux',
+        'Short Description', 'short_description', 'detailed_description',
+        'About the game'
+    ] if c in df.columns]
+    df = df[keep_cols].copy()
+
+    # Limit rows only on Streamlit Cloud to stay within 1GB RAM free tier
+    import os
+    IS_CLOUD = os.environ.get("STREAMLIT_SHARING_MODE") or os.environ.get("HOME") == "/home/adminuser"
+    if IS_CLOUD:
+        if 'Positive' in df.columns:
+            df['Positive'] = df['Positive'].apply(
+                lambda x: float(str(x).split(",")[0]) if isinstance(x, str) else float(x) if x == x else 0
+            )
+            df = df.nlargest(30000, 'Positive').reset_index(drop=True)
+        else:
+            df = df.head(30000).reset_index(drop=True)
+
     return df
 
 
