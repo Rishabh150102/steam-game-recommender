@@ -1,0 +1,24 @@
+# Dataset files - never commit large files
+*.csv
+*.parquet
+*.json
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code
+.vscode/
+
+# Environment variables / API keys
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
