@@ -188,6 +188,12 @@ def load_data():
             data_dir = os.path.join(tmpdir, "data")
             parquet_files = [f for f in os.listdir(data_dir) if f.endswith('.parquet')]
             df = pd.read_parquet(os.path.join(data_dir, parquet_files[0]))
+    # Fix unhashable array columns BEFORE caching
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].apply(
+                lambda x: ', '.join(str(i) for i in x) if isinstance(x, (list, __import__("numpy").ndarray)) else x
+            )
     return df
 
 
@@ -228,7 +234,7 @@ def preprocess(df):
                 raw_genres = []
 
                 # Handle real Python lists from parquet/object columns.
-                if isinstance(genre_str, (list, tuple, set)):
+                if isinstance(genre_str, (list, tuple, set, np.ndarray)):
                     raw_genres = [str(g).strip().strip("'\"") for g in genre_str if str(g).strip()]
                 else:
                     genre_str = str(genre_str).strip()
@@ -285,6 +291,12 @@ def preprocess(df):
     else:
         dc['Rating_Norm'] = 0.5 if len(dc) == 1 else 0.0
 
+    # Normalize array-like object cells so Streamlit cache hashing sees plain strings.
+    for col in [c for c in dc.select_dtypes(include=['object']).columns if c not in ['Windows', 'Mac', 'Linux']]:
+        dc[col] = dc[col].apply(
+            lambda x: ', '.join(str(i) for i in x) if isinstance(x, (list, np.ndarray)) else x
+        )
+
     # Text columns
     for col in ['Genres', 'Tags', 'Categories', 'Name', 'Short Description']:
         if col in dc.columns:
@@ -309,7 +321,10 @@ def preprocess(df):
     # Platform columns
     for col in ['Windows', 'Mac', 'Linux']:
         if col in dc.columns:
-            dc[col] = dc[col].fillna(False).astype(bool)
+            dc[col] = dc[col].apply(
+                lambda x: bool(x[0]) if isinstance(x, (list, np.ndarray)) and len(x) > 0
+                else (False if isinstance(x, (list, np.ndarray)) else (x if pd.isna(x) else bool(x)))
+            ).fillna(False)
         else:
             dc[col] = False
 
