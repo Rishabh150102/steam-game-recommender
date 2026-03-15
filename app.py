@@ -206,7 +206,6 @@ def load_data():
     df = df[keep_cols].copy()
 
     # Limit rows only on Streamlit Cloud to stay within 1GB RAM free tier
-    import os
     IS_CLOUD = os.environ.get("STREAMLIT_SHARING_MODE") or os.environ.get("HOME") == "/home/adminuser"
     if IS_CLOUD:
         if 'Positive' in df.columns:
